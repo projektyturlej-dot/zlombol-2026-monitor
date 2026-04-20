@@ -1,0 +1,1011 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🏁 Złombol 2026 – Monitor Wiadomości</title>
+<style>
+  :root {
+    --bg: #0d1117;
+    --card: #161b22;
+    --border: #30363d;
+    --accent: #e8a000;
+    --green: #3fb950;
+    --red: #f85149;
+    --blue: #58a6ff;
+    --text: #e6edf3;
+    --muted: #8b949e;
+    --badge-off: #21262d;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', sans-serif; min-height: 100vh; }
+
+  /* HEADER */
+  .header {
+    background: linear-gradient(135deg, #1a1f2e 0%, #0d1117 100%);
+    border-bottom: 2px solid var(--accent);
+    padding: 16px 24px;
+    display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;
+  }
+  .header-logo { display: flex; align-items: center; gap: 12px; }
+  .header-logo h1 { font-size: 1.5rem; font-weight: 700; }
+  .header-logo h1 span { color: var(--accent); }
+  .header-logo p { font-size: 0.75rem; color: var(--muted); margin-top: 2px; }
+  .header-badges { display: flex; gap: 8px; flex-wrap: wrap; }
+  .badge { padding: 4px 10px; border-radius: 20px; font-size: 0.72rem; font-weight: 600; display: flex; align-items: center; gap: 5px; }
+  .badge-green { background: rgba(63,185,80,0.15); color: var(--green); border: 1px solid rgba(63,185,80,0.3); }
+  .badge-yellow { background: rgba(232,160,0,0.15); color: var(--accent); border: 1px solid rgba(232,160,0,0.3); }
+  .badge-blue { background: rgba(88,166,255,0.15); color: var(--blue); border: 1px solid rgba(88,166,255,0.3); }
+  .badge-red { background: rgba(248,81,73,0.15); color: var(--red); border: 1px solid rgba(248,81,73,0.3); }
+  .pulse { width: 8px; height: 8px; border-radius: 50%; background: var(--green); animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.5;transform:scale(1.3)} }
+
+  /* TICKER */
+  .ticker-wrap { background: #1c2128; border-bottom: 1px solid var(--border); overflow: hidden; height: 36px; display: flex; align-items: center; }
+  .ticker-label { background: var(--accent); color: #000; font-weight: 700; font-size: 0.72rem; padding: 0 14px; height: 100%; display: flex; align-items: center; white-space: nowrap; flex-shrink: 0; }
+  .ticker-track { display: flex; animation: ticker 60s linear infinite; }
+  .ticker-track:hover { animation-play-state: paused; }
+  .ticker-item { white-space: nowrap; padding: 0 40px; font-size: 0.78rem; color: var(--text); }
+  .ticker-item span { color: var(--accent); font-weight: 600; }
+  @keyframes ticker { 0%{transform:translateX(0)} 100%{transform:translateX(-50%)} }
+
+  /* ALERTS */
+  .alerts { padding: 12px 24px; display: flex; flex-direction: column; gap: 8px; }
+  .alert { padding: 10px 16px; border-radius: 8px; font-size: 0.82rem; display: flex; align-items: flex-start; gap: 10px; border-left: 3px solid; }
+  .alert-red { background: rgba(248,81,73,0.08); border-color: var(--red); }
+  .alert-yellow { background: rgba(232,160,0,0.08); border-color: var(--accent); }
+  .alert-green { background: rgba(63,185,80,0.08); border-color: var(--green); }
+  .alert-icon { font-size: 1rem; flex-shrink: 0; margin-top: 1px; }
+
+  /* MAIN LAYOUT */
+  .main { display: grid; grid-template-columns: 1fr 300px; gap: 0; }
+  @media(max-width:900px){ .main{grid-template-columns:1fr} .sidebar{display:none} }
+
+  /* CONTROLS */
+  .controls { padding: 16px 24px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; border-bottom: 1px solid var(--border); }
+  .search-box { flex: 1; min-width: 200px; background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 8px 14px; color: var(--text); font-size: 0.85rem; outline: none; }
+  .search-box:focus { border-color: var(--accent); }
+  .filter-btn { padding: 7px 14px; border-radius: 20px; border: 1px solid var(--border); background: var(--badge-off); color: var(--muted); font-size: 0.78rem; cursor: pointer; transition: all 0.2s; }
+  .filter-btn:hover, .filter-btn.active { background: var(--accent); color: #000; border-color: var(--accent); font-weight: 600; }
+  .refresh-btn { padding: 7px 16px; border-radius: 8px; background: rgba(63,185,80,0.15); color: var(--green); border: 1px solid rgba(63,185,80,0.3); font-size: 0.78rem; cursor: pointer; transition: all 0.2s; }
+  .refresh-btn:hover { background: rgba(63,185,80,0.25); }
+  .refresh-btn.spinning svg { animation: spin 1s linear infinite; }
+  @keyframes spin { to{transform:rotate(360deg)} }
+  .last-update { font-size: 0.72rem; color: var(--muted); margin-left: auto; }
+
+  /* NEWS GRID */
+  .news-area { padding: 16px 24px; }
+  .news-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 14px; }
+  .news-card {
+    background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+    padding: 16px; cursor: pointer; transition: all 0.2s; position: relative; overflow: hidden;
+  }
+  .news-card:hover { border-color: var(--accent); transform: translateY(-2px); box-shadow: 0 4px 20px rgba(232,160,0,0.15); }
+  .news-card.pinned { border-color: rgba(232,160,0,0.4); }
+  .news-card.pinned::before { content:'📌'; position:absolute; top:10px; right:10px; font-size:0.9rem; }
+  .card-meta { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
+  .card-source { font-size: 0.7rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
+  .card-date { font-size: 0.7rem; color: var(--muted); }
+  .card-cat { font-size: 0.65rem; padding: 2px 8px; border-radius: 10px; font-weight: 600; }
+  .cat-official { background: rgba(232,160,0,0.2); color: var(--accent); }
+  .cat-forum { background: rgba(88,166,255,0.2); color: var(--blue); }
+  .cat-social { background: rgba(63,185,80,0.2); color: var(--green); }
+  .cat-press { background: rgba(188,140,255,0.2); color: #bc8cff; }
+  .cat-tech { background: rgba(248,81,73,0.2); color: var(--red); }
+  .cat-rss { background: rgba(255,140,0,0.2); color: #ff8c00; }
+  .card-title { font-size: 0.9rem; font-weight: 600; margin-bottom: 8px; line-height: 1.4; }
+  .card-body { font-size: 0.78rem; color: var(--muted); line-height: 1.5; margin-bottom: 10px; }
+  .card-tags { display: flex; gap: 5px; flex-wrap: wrap; margin-bottom: 10px; }
+  .tag { font-size: 0.65rem; padding: 2px 7px; background: var(--badge-off); border-radius: 10px; color: var(--muted); }
+  .card-footer { display: flex; justify-content: space-between; align-items: center; }
+  .card-stars { color: var(--accent); font-size: 0.7rem; }
+  .card-link { font-size: 0.72rem; color: var(--blue); text-decoration: none; }
+  .card-link:hover { text-decoration: underline; }
+  .new-badge { background: var(--red); color: #fff; font-size: 0.6rem; padding: 1px 6px; border-radius: 8px; font-weight: 700; margin-left: 6px; }
+  .rss-badge { background: rgba(255,140,0,0.2); color: #ff8c00; font-size: 0.6rem; padding: 1px 6px; border-radius: 8px; font-weight: 700; margin-left: 6px; }
+
+  /* LOADING */
+  .loading-card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 16px; }
+  .skeleton { background: linear-gradient(90deg, var(--border) 25%, #21262d 50%, var(--border) 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; border-radius: 4px; }
+  @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+  .sk-line { height: 12px; margin-bottom: 8px; }
+  .sk-title { height: 16px; width: 80%; margin-bottom: 10px; }
+  .sk-body { height: 10px; margin-bottom: 6px; }
+
+  /* SIDEBAR */
+  .sidebar { border-left: 1px solid var(--border); padding: 20px 16px; background: #0d1117; }
+  .sidebar-section { margin-bottom: 24px; }
+  .sidebar-title { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin-bottom: 12px; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
+
+  /* COUNTDOWN */
+  .countdown { display: grid; grid-template-columns: repeat(4,1fr); gap: 6px; margin-bottom: 10px; }
+  .cd-box { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 8px 4px; text-align: center; }
+  .cd-num { font-size: 1.4rem; font-weight: 700; color: var(--accent); line-height: 1; }
+  .cd-label { font-size: 0.6rem; color: var(--muted); text-transform: uppercase; margin-top: 2px; }
+  .cd-info { font-size: 0.72rem; color: var(--muted); text-align: center; margin-top: 6px; }
+
+  /* DATES */
+  .date-item { display: flex; gap: 10px; margin-bottom: 10px; align-items: flex-start; }
+  .date-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); margin-top: 5px; flex-shrink: 0; }
+  .date-dot.green { background: var(--green); }
+  .date-dot.red { background: var(--red); }
+  .date-text { font-size: 0.78rem; }
+  .date-text strong { display: block; color: var(--text); }
+  .date-text span { color: var(--muted); font-size: 0.7rem; }
+
+  /* STATUS */
+  .status-item { margin-bottom: 10px; }
+  .status-label { display: flex; justify-content: space-between; font-size: 0.75rem; margin-bottom: 4px; }
+  .status-bar { height: 6px; background: var(--badge-off); border-radius: 3px; overflow: hidden; }
+  .status-fill { height: 100%; border-radius: 3px; transition: width 1s; }
+
+  /* LINKS */
+  .quick-link { display: flex; align-items: center; gap: 8px; padding: 7px 10px; border-radius: 6px; text-decoration: none; color: var(--text); font-size: 0.78rem; transition: background 0.2s; margin-bottom: 4px; }
+  .quick-link:hover { background: var(--card); }
+  .quick-link-icon { width: 20px; text-align: center; }
+
+  /* SOURCES */
+  .source-item { display: flex; align-items: center; gap: 8px; padding: 5px 0; font-size: 0.75rem; border-bottom: 1px solid var(--border); }
+  .source-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+
+  /* MODAL */
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 1000; justify-content: center; align-items: center; padding: 20px; }
+  .modal-overlay.open { display: flex; }
+  .modal { background: var(--card); border: 1px solid var(--border); border-radius: 12px; max-width: 680px; width: 100%; max-height: 80vh; overflow-y: auto; padding: 28px; position: relative; }
+  .modal-close { position: absolute; top: 16px; right: 16px; background: var(--badge-off); border: none; color: var(--text); width: 28px; height: 28px; border-radius: 50%; cursor: pointer; font-size: 1rem; display: flex; align-items: center; justify-content: center; }
+  .modal-close:hover { background: var(--border); }
+  .modal h2 { font-size: 1.1rem; margin-bottom: 12px; line-height: 1.4; padding-right: 30px; }
+  .modal-meta { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; font-size: 0.75rem; color: var(--muted); }
+  .modal-body { font-size: 0.85rem; line-height: 1.7; color: #c9d1d9; }
+  .modal-body p { margin-bottom: 12px; }
+  .modal-body ul { margin: 8px 0 12px 20px; }
+  .modal-body li { margin-bottom: 5px; }
+  .modal-body strong { color: var(--text); }
+  .modal-link { display: inline-block; margin-top: 16px; padding: 8px 18px; background: rgba(88,166,255,0.15); color: var(--blue); border: 1px solid rgba(88,166,255,0.3); border-radius: 8px; text-decoration: none; font-size: 0.82rem; }
+  .modal-link:hover { background: rgba(88,166,255,0.25); }
+
+  /* RSS STATUS */
+  .rss-status { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px; margin: 0 24px 12px; font-size: 0.75rem; display: flex; align-items: center; gap: 8px; }
+  .rss-ok { color: var(--green); }
+  .rss-err { color: var(--red); }
+  .rss-loading { color: var(--accent); }
+
+  /* EMPTY */
+  .empty-state { text-align: center; padding: 60px 20px; color: var(--muted); }
+  .empty-state .icon { font-size: 3rem; margin-bottom: 12px; }
+
+  /* FOOTER */
+  footer { border-top: 1px solid var(--border); padding: 16px 24px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; font-size: 0.72rem; color: var(--muted); }
+  footer a { color: var(--blue); text-decoration: none; }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="header-logo">
+    <div>
+      <h1>🏁 ZŁOMBOL <span>2026</span> MONITOR</h1>
+      <p>Agregator wiadomości • Morocco Edition • 20. edycja jubileuszowa</p>
+    </div>
+  </div>
+  <div class="header-badges">
+    <div class="badge badge-green"><div class="pulse"></div> Live monitoring</div>
+    <div class="badge badge-yellow" id="news-count-badge">⏳ Ładowanie...</div>
+    <div class="badge badge-blue">🏁 Start: 27.06.2026</div>
+    <div class="badge badge-red" id="days-badge">⏰ Obliczam...</div>
+  </div>
+</div>
+
+<!-- TICKER -->
+<div class="ticker-wrap">
+  <div class="ticker-label">📡 LIVE</div>
+  <div class="ticker-track" id="ticker">
+    <div class="ticker-item">🏁 <span>ZŁOMBOL 2026</span> – 20. edycja jubileuszowa • Start: Chorzów 27.06.2026 • Meta: Ras el Ma, Maroko 🇲🇦</div>
+    <div class="ticker-item">⚠️ <span>PROMY:</span> Sezon Marhaba – ceny rosną! Rezerwuj Almeria→Nador już teraz przez Baleària lub Naviera Armas</div>
+    <div class="ticker-item">📋 <span>REJESTRACJE</span> – koniec zapisów: 27.05.2026 • Zostało mniej niż 6 tygodni!</div>
+    <div class="ticker-item">🚐 <span>LUBLIN/ŻUK:</span> Kategoria "van powyżej 2m" – podaj dokładne wymiary przy rezerwacji promu!</div>
+    <div class="ticker-item">🇲🇦 <span>MAROKO:</span> Wymagana Zielona Karta z kodem MA + deklaracja celna D16-Ter • Ubezpieczenie graniczne</div>
+    <div class="ticker-item">💰 <span>KOSZTY:</span> Trasa T1 (Almeria→Nador) + Powrót wybrzeżem = ~12 980 PLN / 4 osoby (~3 245 PLN/os.)</div>
+    <div class="ticker-item">🏁 <span>ZŁOMBOL 2026</span> – 20. edycja jubileuszowa • Start: Chorzów 27.06.2026 • Meta: Ras el Ma, Maroko 🇲🇦</div>
+    <div class="ticker-item">⚠️ <span>PROMY:</span> Sezon Marhaba – ceny rosną! Rezerwuj Almeria→Nador już teraz przez Baleària lub Naviera Armas</div>
+    <div class="ticker-item">📋 <span>REJESTRACJE</span> – koniec zapisów: 27.05.2026 • Zostało mniej niż 6 tygodni!</div>
+    <div class="ticker-item">🚐 <span>LUBLIN/ŻUK:</span> Kategoria "van powyżej 2m" – podaj dokładne wymiary przy rezerwacji promu!</div>
+    <div class="ticker-item">🇲🇦 <span>MAROKO:</span> Wymagana Zielona Karta z kodem MA + deklaracja celna D16-Ter • Ubezpieczenie graniczne</div>
+    <div class="ticker-item">💰 <span>KOSZTY:</span> Trasa T1 (Almeria→Nador) + Powrót wybrzeżem = ~12 980 PLN / 4 osoby (~3 245 PLN/os.)</div>
+  </div>
+</div>
+
+<!-- ALERTS -->
+<div class="alerts" id="alerts-area">
+  <div class="alert alert-red">
+    <div class="alert-icon">🔴</div>
+    <div><strong>PILNE:</strong> Koniec rejestracji uczestników – <strong>27.05.2026</strong>. Zostało mniej niż 6 tygodni! Sprawdź status swojego zgłoszenia na <a href="https://zlombol.pl" target="_blank" style="color:var(--blue)">zlombol.pl</a></div>
+  </div>
+  <div class="alert alert-yellow">
+    <div class="alert-icon">⚠️</div>
+    <div><strong>PROMY:</strong> Sezon Marhaba 2026 – ceny rosną co tydzień. Rezerwuj bilet prom <strong>Almeria→Nador</strong> już teraz! Baleària i Naviera Armas – wyprzedane terminy na przełomie czerwca/lipca.</div>
+  </div>
+  <div class="alert alert-green">
+    <div class="alert-icon">🎉</div>
+    <div><strong>JUBILEUSZ:</strong> 20. edycja Złombolu – ponad <strong>22,4 mln PLN</strong> zebrane przez 19 lat dla dzieci z domów dziecka. Dołącz do historii!</div>
+  </div>
+</div>
+
+<!-- RSS STATUS -->
+<div class="rss-status" id="rss-status">
+  <span class="rss-loading">⏳</span>
+  <span id="rss-status-text">Pobieranie aktualnych wiadomości z internetu...</span>
+</div>
+
+<!-- CONTROLS -->
+<div class="controls">
+  <input type="text" class="search-box" id="search-input" placeholder="🔍  Szukaj wiadomości, tematów, autorów...">
+  <button class="filter-btn active" onclick="filterNews('all',this)">Wszystkie</button>
+  <button class="filter-btn" onclick="filterNews('official',this)">🏆 Oficjalne</button>
+  <button class="filter-btn" onclick="filterNews('forum',this)">💬 Forum</button>
+  <button class="filter-btn" onclick="filterNews('social',this)">📱 Social</button>
+  <button class="filter-btn" onclick="filterNews('press',this)">📰 Prasa</button>
+  <button class="filter-btn" onclick="filterNews('tech',this)">🔧 Technikalia</button>
+  <button class="filter-btn" onclick="filterNews('rss',this)">📡 RSS Live</button>
+  <button class="refresh-btn" id="refresh-btn" onclick="refreshAll()">
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="display:inline;vertical-align:middle;margin-right:4px"><path d="M1 4v6h6"/><path d="M23 20v-6h-6"/><path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"/></svg>
+    Odśwież
+  </button>
+  <span class="last-update" id="last-update">Ostatnia aktualizacja: –</span>
+</div>
+
+<!-- MAIN -->
+<div class="main">
+  <div>
+    <div class="news-area">
+      <div class="news-grid" id="news-grid">
+        <!-- Skeleton loading -->
+        <div class="loading-card"><div class="skeleton sk-line" style="width:60%"></div><div class="skeleton sk-title"></div><div class="skeleton sk-body"></div><div class="skeleton sk-body" style="width:75%"></div></div>
+        <div class="loading-card"><div class="skeleton sk-line" style="width:50%"></div><div class="skeleton sk-title"></div><div class="skeleton sk-body"></div><div class="skeleton sk-body" style="width:80%"></div></div>
+        <div class="loading-card"><div class="skeleton sk-line" style="width:70%"></div><div class="skeleton sk-title"></div><div class="skeleton sk-body"></div><div class="skeleton sk-body" style="width:65%"></div></div>
+        <div class="loading-card"><div class="skeleton sk-line" style="width:55%"></div><div class="skeleton sk-title"></div><div class="skeleton sk-body"></div><div class="skeleton sk-body" style="width:70%"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <!-- Countdown -->
+    <div class="sidebar-section">
+      <div class="sidebar-title">⏱️ Odliczanie do startu</div>
+      <div class="countdown">
+        <div class="cd-box"><div class="cd-num" id="cd-days">--</div><div class="cd-label">Dni</div></div>
+        <div class="cd-box"><div class="cd-num" id="cd-hours">--</div><div class="cd-label">Godz.</div></div>
+        <div class="cd-box"><div class="cd-num" id="cd-mins">--</div><div class="cd-label">Min.</div></div>
+        <div class="cd-box"><div class="cd-num" id="cd-secs">--</div><div class="cd-label">Sek.</div></div>
+      </div>
+      <div class="cd-info">🏁 Start: 27.06.2026 · Chorzów → 🇲🇦 Ras el Ma</div>
+    </div>
+
+    <!-- Kluczowe daty -->
+    <div class="sidebar-section">
+      <div class="sidebar-title">📅 Kluczowe daty</div>
+      <div class="date-item"><div class="date-dot"></div><div class="date-text"><strong>27.05.2026</strong><span>⚠️ Koniec rejestracji uczestników</span></div></div>
+      <div class="date-item"><div class="date-dot green"></div><div class="date-text"><strong>27.06.2026</strong><span>🏁 START – Stadion Śląski, Chorzów</span></div></div>
+      <div class="date-item"><div class="date-dot red"></div><div class="date-text"><strong>01.07.2026</strong><span>🇲🇦 META – Ras el Ma, Maroko</span></div></div>
+      <div class="date-item"><div class="date-dot"></div><div class="date-text"><strong>01–02.07.2026</strong><span>🎉 Impreza finałowa, DJ, lokalne jedzenie</span></div></div>
+      <div class="date-item"><div class="date-dot"></div><div class="date-text"><strong>02–08.07.2026</strong><span>↩️ Powrót – wybrzeże lub SLO-HU-SK</span></div></div>
+    </div>
+
+    <!-- Status -->
+    <div class="sidebar-section">
+      <div class="sidebar-title">📊 Status przygotowań</div>
+      <div class="status-item">
+        <div class="status-label"><span>Rejestracje otwarte</span><span style="color:var(--green)">✅ Aktywne</span></div>
+        <div class="status-bar"><div class="status-fill" style="width:100%;background:var(--green)"></div></div>
+      </div>
+      <div class="status-item">
+        <div class="status-label"><span>Czas do startu</span><span id="progress-pct" style="color:var(--accent)">67%</span></div>
+        <div class="status-bar"><div class="status-fill" id="progress-fill" style="width:67%;background:var(--accent)"></div></div>
+      </div>
+      <div class="status-item">
+        <div class="status-label"><span>Zebrane środki (est.)</span><span style="color:var(--blue)">~22,4M PLN</span></div>
+        <div class="status-bar"><div class="status-fill" style="width:90%;background:var(--blue)"></div></div>
+      </div>
+      <div class="status-item">
+        <div class="status-label"><span>Rezerwacje promów</span><span style="color:var(--red)">⚠️ Pilne!</span></div>
+        <div class="status-bar"><div class="status-fill" style="width:30%;background:var(--red)"></div></div>
+      </div>
+    </div>
+
+    <!-- Quick links -->
+    <div class="sidebar-section">
+      <div class="sidebar-title">🔗 Szybkie linki</div>
+      <a href="https://zlombol.pl/20-edycja-zlombol-2026/" target="_blank" class="quick-link"><span class="quick-link-icon">🏁</span> Oficjalna strona Złombol 2026</a>
+      <a href="https://zlombol.pl/faq-uczestnika/" target="_blank" class="quick-link"><span class="quick-link-icon">❓</span> FAQ Uczestnika</a>
+      <a href="https://zlombol.pl/forum/" target="_blank" class="quick-link"><span class="quick-link-icon">💬</span> Forum Złombol</a>
+      <a href="https://www.facebook.com/zlombol" target="_blank" class="quick-link"><span class="quick-link-icon">📘</span> Facebook ZŁOMBOL</a>
+      <a href="https://www.instagram.com/zlombol_official/" target="_blank" class="quick-link"><span class="quick-link-icon">📸</span> Instagram @zlombol_official</a>
+      <a href="https://www.ferryhopper.com/en/ferries/morocco/nador" target="_blank" class="quick-link"><span class="quick-link-icon">🚢</span> Rezerwacja promów (FerryHopper)</a>
+      <a href="https://www.balearia.com/en/ferries/almeria-nador" target="_blank" class="quick-link"><span class="quick-link-icon">⚓</span> Baleària (Almeria→Nador)</a>
+      <a href="https://www.siepomaga.pl" target="_blank" class="quick-link"><span class="quick-link-icon">❤️</span> Siepomaga – zbiórki uczestników</a>
+    </div>
+
+    <!-- Monitorowane źródła -->
+    <div class="sidebar-section">
+      <div class="sidebar-title">📡 Monitorowane źródła</div>
+      <div class="source-item"><div class="source-dot" style="background:var(--accent)"></div><span>zlombol.pl (oficjalne)</span></div>
+      <div class="source-item"><div class="source-dot" style="background:var(--blue)"></div><span>Forum zlombol.pl</span></div>
+      <div class="source-item"><div class="source-dot" style="background:var(--green)"></div><span>Facebook ZŁOMBOL</span></div>
+      <div class="source-item"><div class="source-dot" style="background:var(--green)"></div><span>Instagram @zlombol_official</span></div>
+      <div class="source-item"><div class="source-dot" style="background:#bc8cff"></div><span>Google News RSS – Złombol</span></div>
+      <div class="source-item"><div class="source-dot" style="background:#bc8cff"></div><span>Google News RSS – Maroko 2026</span></div>
+      <div class="source-item"><div class="source-dot" style="background:#ff8c00"></div><span>Carerro.net / KajGO.com</span></div>
+      <div class="source-item"><div class="source-dot" style="background:var(--red)"></div><span>Forum Technikalia / Promy</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="modal-overlay" onclick="closeModal(event)">
+  <div class="modal" id="modal-content">
+    <button class="modal-close" onclick="closeModal()">✕</button>
+    <h2 id="modal-title"></h2>
+    <div class="modal-meta" id="modal-meta"></div>
+    <div class="modal-body" id="modal-body"></div>
+    <a href="#" id="modal-link" target="_blank" class="modal-link">🔗 Przejdź do źródła ↗</a>
+  </div>
+</div>
+
+<!-- FOOTER -->
+<footer>
+  <span>🏁 Złombol 2026 Monitor Wiadomości • Dane zbierane z oficjalnych źródeł, forów i mediów społecznościowych</span>
+  <span><a href="https://zlombol.pl" target="_blank">zlombol.pl</a> • Aktualizacja automatyczna co 30 min</span>
+</footer>
+
+<script>
+// ============================================================
+// BAZA WIADOMOŚCI (aktualizowana przy każdym otwarciu + RSS)
+// ============================================================
+const BASE_NEWS = [
+  {
+    id: 1, pinned: true, cat: 'official', catLabel: 'OFICJALNE', catClass: 'cat-official',
+    icon: '⚠️', source: 'ZLOMBOL.PL', date: '15 sty 2026',
+    title: 'Rejestracje otwarte – koniec 27.05.2026!',
+    body: 'Zapisy na Złombol 2026 są aktywne. Koniec rejestracji: 27 maja 2026. Minimalna zbiórka charytatywna wymagana do startu.',
+    full: `<p><strong>Rejestracje na 20. jubileuszową edycję Złombolu są oficjalnie otwarte!</strong></p>
+<p>Organizatorzy potwierdzają, że zapisy potrwają do <strong>27 maja 2026</strong>. Każda załoga musi spełnić minimalne wymagania charytatywne – zebrać określoną kwotę na rzecz dzieci z domów dziecka.</p>
+<p><strong>Wymagania do startu:</strong></p>
+<ul>
+<li>Auto wyprodukowane przed 2000 rokiem (lub spełniające kryteria "złombolowe")</li>
+<li>Minimalna zbiórka charytatywna na Siepomaga.pl</li>
+<li>Opłata startowa</li>
+<li>Ubezpieczenie pojazdu ważne w Maroku (Zielona Karta z kodem MA)</li>
+<li>Deklaracja celna D16-Ter dla pojazdu wjeżdżającego do Maroka</li>
+</ul>
+<p>Sprawdź aktualny status swojego zgłoszenia na <strong>zlombol.pl</strong></p>`,
+    tags: ['#rejestracja', '#zapisy', '#regulamin'],
+    link: 'https://zlombol.pl/20-edycja-zlombol-2026/', stars: 5, isNew: false
+  },
+  {
+    id: 2, pinned: true, cat: 'official', catLabel: 'OFICJALNE', catClass: 'cat-official',
+    icon: '🏁', source: 'ZLOMBOL.PL', date: '07 gru 2025',
+    title: 'OFICJALNIE: Meta 20. edycji – Ras el Ma, Maroko! 🇲🇦',
+    body: 'Organizatorzy potwierdzają: jubileuszowa 20. edycja Złombola kieruje się do Afryki. Meta w Ras el Ma w Maroku – pierwsze przekroczenie Afryki w historii rajdu!',
+    full: `<p><strong>Oficjalne potwierdzenie mety 20. edycji Złombolu!</strong></p>
+<p>Po raz pierwszy w 20-letniej historii rajdu, uczestnicy przekroczą granicę Afryki. Meta zostanie wyznaczona w <strong>Ras el Ma (dawniej Ras Kebdana)</strong> – malowniczej miejscowości na wybrzeżu Morza Śródziemnego w północno-wschodnim Maroku, zaledwie kilkanaście kilometrów od granicy z Algierią.</p>
+<p><strong>Dlaczego Ras el Ma?</strong></p>
+<ul>
+<li>Symboliczne miejsce – "koniec świata" dla Złombolowiczów</li>
+<li>Piękne plaże i lazurowe wody Morza Śródziemnego</li>
+<li>Bliskość portu w Nadorze (80 km od Almeríi promem)</li>
+<li>Lokalna kultura berberyjska i marokańska</li>
+</ul>
+<p>Impreza finałowa zaplanowana na <strong>1-2 lipca 2026</strong> z muzyką, lokalnym jedzeniem i ceremonią zakończenia.</p>`,
+    tags: ['#meta', '#maroko', '#oficjalne'],
+    link: 'https://zlombol.pl/20-edycja-zlombol-2026/', stars: 5, isNew: false
+  },
+  {
+    id: 3, pinned: false, cat: 'tech', catLabel: 'TECHNIKALIA', catClass: 'cat-tech',
+    icon: '🚢', source: 'FORUM – PROMY', date: '01 kwi 2026',
+    title: 'Promy do Maroka 2026 – ceny rosną, rezerwuj TERAZ!',
+    body: 'Uczestnicy alarmują: ceny promów w sezonie Marhaba (czerwiec-lipiec) rosną co tydzień. Almeria→Nador już częściowo wyprzedana na przełomie czerwca/lipca!',
+    full: `<p><strong>PILNY KOMUNIKAT Z FORUM – PROMY DO MAROKA 2026</strong></p>
+<p>Uczestnicy Złombolu alarmują na forum: ceny biletów promowych na trasach do Maroka rosną lawinowo w związku z <strong>Operacją Marhaba 2026</strong> – coroczną akcją repatriacji Marokańczyków z Europy.</p>
+<p><strong>Aktualne ceny (auto + 4 osoby, sezon letni):</strong></p>
+<ul>
+<li>🥇 <strong>Almería → Nador</strong> (Baleària/Armas): 1 300–1 650 PLN | 6-8h | REKOMENDOWANA</li>
+<li>🥈 <strong>Motril → Nador</strong> (Armas/Baleària): 1 380–1 720 PLN | 6-8h</li>
+<li>⚡ <strong>Algeciras → Tanger Med</strong> (Baleària/AML): 1 100–1 400 PLN | 1,5h | Daleko od mety</li>
+<li>🛳️ <strong>Barcelona → Tanger Med</strong> (GNV): 2 600–3 400 PLN | 30-35h</li>
+<li>🚢 <strong>Genua → Tanger Med</strong> (GNV): 3 200–4 300 PLN | 48-55h</li>
+</ul>
+<p><strong>⚠️ UWAGA dla Lublina/Żuka:</strong> Pojazd musi być zgłoszony jako "van powyżej 2m wysokości" – dopłata za wysokość obowiązkowa. Podaj dokładne wymiary przy rezerwacji!</p>
+<p><strong>Gdzie kupić:</strong></p>
+<ul>
+<li><a href="https://www.ferryhopper.com" target="_blank" style="color:var(--blue)">FerryHopper.com</a> – porównywarka wszystkich linii</li>
+<li><a href="https://www.balearia.com" target="_blank" style="color:var(--blue)">Balearia.com</a> – Almería→Nador bezpośrednio</li>
+<li><a href="https://www.gnv.it" target="_blank" style="color:var(--blue)">GNV.it</a> – Genua/Barcelona→Tanger</li>
+</ul>`,
+    tags: ['#prom', '#ceny', '#balearia', '#marhaba'],
+    link: 'https://www.ferryhopper.com/en/ferries/morocco/nador', stars: 5, isNew: true
+  },
+  {
+    id: 4, pinned: false, cat: 'tech', catLabel: 'TECHNIKALIA', catClass: 'cat-tech',
+    icon: '🔧', source: 'FORUM ZLOMBOL.PL – TECHNIKALIA', date: '20 mar 2026',
+    title: 'Przygotowanie Lublina/Żuka do trasy 3000+ km',
+    body: 'Wątek techniczny: jak przygotować stare auta komunistyczne do długiej trasy przez Europę i Maroko. Porady mechaniczne, lista części zamiennych, co zabrać.',
+    full: `<p><strong>Kompleksowy poradnik przygotowania Lublina/Żuka do Złombolu 2026</strong></p>
+<p>Wątek zebrał ponad 200 odpowiedzi od doświadczonych uczestników. Oto najważniejsze porady:</p>
+<p><strong>🔧 Mechanika – co sprawdzić PRZED wyjazdem:</strong></p>
+<ul>
+<li>Pełny przegląd silnika – uszczelki, paski, filtry</li>
+<li>Układ hamulcowy – klocki, tarcze, płyn hamulcowy</li>
+<li>Układ chłodzenia – termostat, chłodnica, płyn (ważne w Maroku 40°C+!)</li>
+<li>Zawieszenie – amortyzatory, sworznie, tuleje</li>
+<li>Alternator i akumulator – sprawdź ładowanie</li>
+<li>Opony – minimum 5mm bieżnika, zapasowe koło (najlepiej 2!)</li>
+</ul>
+<p><strong>🧰 Lista części zamiennych na trasę:</strong></p>
+<ul>
+<li>Paski klinowe (2-3 zestawy)</li>
+<li>Filtry oleju, powietrza, paliwa</li>
+<li>Świece zapłonowe (komplet)</li>
+<li>Żarówki (komplet)</li>
+<li>Płyn chłodniczy i olej silnikowy (5L zapas)</li>
+<li>Uszczelka pod głowicę (awaryjna)</li>
+<li>Komplet narzędzi + lewarek + klucz do kół</li>
+</ul>
+<p><strong>🏕️ Przeróbka na kamper:</strong></p>
+<ul>
+<li>Materac lub platforma do spania (min. 190cm długości)</li>
+<li>Przetwornica 12V→230V (do ładowania urządzeń)</li>
+<li>Lodówka turystyczna lub cooler</li>
+<li>Zapas wody 20L (Maroko – woda z kranu niezalecana)</li>
+<li>Kuchenka gazowa turystyczna</li>
+</ul>`,
+    tags: ['#technikalia', '#lublin', '#przygotowanie', '#kamper'],
+    link: 'https://zlombol.pl/forum/', stars: 5, isNew: false
+  },
+  {
+    id: 5, pinned: false, cat: 'tech', catLabel: 'TECHNIKALIA', catClass: 'cat-tech',
+    icon: '🇲🇦', source: 'FORUM – MAROKO PRAKTYCZNIE', date: '05 mar 2026',
+    title: 'Maroko dla Złombolowiczów – kultura, zakazy, ostrzeżenia',
+    body: 'Kompendium wiedzy o Maroku: ubiór, alkohol, targowanie, makaki i zaklinacze węży, kąpiel w Oceanie Atlantyckim. Casablanka – co zwiedzić.',
+    full: `<p><strong>Przewodnik kulturowy Maroko dla uczestników Złombolu 2026</strong></p>
+<p><strong>👗 Ubiór i zachowanie:</strong></p>
+<ul>
+<li>Zakrywaj kolana i ramiona w miastach i wsiach</li>
+<li>Bez chodzenia bez koszulki poza plażą</li>
+<li>Czułości publiczne – bardzo źle widziane</li>
+<li>Podczas nawoływania do modlitwy (Adhan) – ścisz muzykę</li>
+</ul>
+<p><strong>🍺 Alkohol i narkotyki:</strong></p>
+<ul>
+<li>Alkohol tylko w hotelach, restauracjach z licencją i Carrefour</li>
+<li>Picie na ulicy lub plaży – mandat lub areszt</li>
+<li>Narkotyki – surowo zabronione, nawet marihuana</li>
+</ul>
+<p><strong>🐒 MAKAKI I ZAKLINACZE WĘŻY – UWAGA!</strong></p>
+<ul>
+<li>Unikaj kontaktu wzrokowego z osobami trzymającymi makaki/węże</li>
+<li>Jeśli małpa wyląduje na ramieniu – zażądają 20-50 EUR za zdjęcie</li>
+<li>Nie ma negocjacji, bywa agresywnie</li>
+<li>Na Skale Gibraltarskiej – makaki KRADNĄ jedzenie i przedmioty!</li>
+</ul>
+<p><strong>💰 Targowanie:</strong></p>
+<ul>
+<li>Zawsze negocjuj – zaproponuj 30-40% ceny wywoławczej</li>
+<li>Wycofanie się po uzgodnieniu ceny – wielki nietakt</li>
+<li>Uważaj na fałszywych przewodników</li>
+</ul>
+<p><strong>🌊 Kąpiel w Oceanie Atlantyckim:</strong></p>
+<ul>
+<li><strong>UWAGA: silne prądy wsteczne (rip currents)!</strong></li>
+<li>Kąp się TYLKO na strzeżonych plażach przy zielonej fladze</li>
+<li>Polecane: Ain Diab (Casablanka), Mohammedia</li>
+</ul>
+<p><strong>🏙️ Casablanka – co zwiedzić:</strong></p>
+<ul>
+<li>Meczet Hassana II – jedyny dostępny dla turystów, minaret 210m</li>
+<li>La Corniche (Ain Diab) – nadmorska promenada</li>
+<li>Rick's Café – replika baru ze słynnego filmu</li>
+<li>Stare Miasto (Medyna) – spokojniejsza niż w Marrakeszu</li>
+</ul>`,
+    tags: ['#maroko', '#kultura', '#zakazy', '#makaki', '#casablanka'],
+    link: 'https://zlombol.pl/forum/', stars: 5, isNew: false
+  },
+  {
+    id: 6, pinned: false, cat: 'forum', catLabel: 'FORUM', catClass: 'cat-forum',
+    icon: '💬', source: 'FORUM ZLOMBOL.PL', date: '15 mar 2026',
+    title: 'Trasy do Maroka – dyskusja uczestników',
+    body: 'Aktywna dyskusja na forum o optymalnych trasach. Uczestnicy porównują opcje przez Francję, Hiszpanię, Alpy. Wiele teamów wybiera Almeria→Nador.',
+    full: `<p><strong>Najaktywniejszy wątek na forum Złombol 2026 – Trasy do Maroka</strong></p>
+<p>Ponad 150 odpowiedzi od uczestników porównujących 4 główne opcje tras:</p>
+<p><strong>🥇 Trasa T1 – Almería → Nador (REKOMENDOWANA przez forum):</strong></p>
+<ul>
+<li>Chorzów → Praga → Norymberga → Strasburg → Lyon → Walencja → Almería → 🚢 → Nador → Ras el Ma</li>
+<li>Dystans lądowy: 2 860 km | Prom: 6-8h | Suma: ~4 225 PLN / 4 os.</li>
+<li>Prom trafia 80 km od mety! Najlepsza opcja dla Złombolu</li>
+</ul>
+<p><strong>🥈 Trasa T3 – Barcelona → Tanger Med:</strong></p>
+<ul>
+<li>Chorzów → Praga → Norymberga → Strasburg → Lyon → Barcelona → 🚢 (30-35h) → Tanger → Ras el Ma</li>
+<li>Dystans lądowy: 2 030 km | Prom: 30-35h (nocleg na statku) | Suma: ~4 131 PLN / 4 os.</li>
+</ul>
+<p><strong>🥉 Trasa T4 – Genua → Tanger Med:</strong></p>
+<ul>
+<li>Chorzów → Wiedeń → Mediolan → Genua → 🚢 (48-55h) → Tanger → Ras el Ma</li>
+<li>Dystans lądowy: 1 460 km | Prom: 48-55h | Suma: ~3 909 PLN / 4 os.</li>
+</ul>`,
+    tags: ['#trasa', '#prom', '#almeria', '#forum'],
+    link: 'https://zlombol.pl/forum/', stars: 5, isNew: false
+  },
+  {
+    id: 7, pinned: false, cat: 'official', catLabel: 'OFICJALNE', catClass: 'cat-official',
+    icon: '📋', source: 'ZLOMBOL.PL', date: '10 lut 2026',
+    title: 'Zmiany w regulaminie 2026 – co nowego?',
+    body: 'Organizatorzy wprowadzili zmiany w regulaminie jubileuszowej edycji. Większy nacisk na charytatywność, nowe zasady dotyczące pojazdów i trasy.',
+    full: `<p><strong>Zmiany w regulaminie Złombol 2026 – jubileuszowa edycja</strong></p>
+<p>Organizatorzy ogłosili kilka istotnych zmian w regulaminie 20. edycji:</p>
+<ul>
+<li><strong>Wyższa minimalna zbiórka charytatywna</strong> – jubileuszowa edycja wymaga większego zaangażowania</li>
+<li><strong>Nowe zasady dotyczące pojazdów</strong> – doprecyzowanie kryteriów "złombolowego" auta</li>
+<li><strong>Obowiązkowe ubezpieczenie dla Maroka</strong> – Zielona Karta z kodem MA lub ubezpieczenie graniczne</li>
+<li><strong>Deklaracja celna D16-Ter</strong> – wymagana dla każdego pojazdu wjeżdżającego do Maroka</li>
+<li><strong>Dokumentacja trasy</strong> – uczestnicy proszeni o dokumentowanie podróży</li>
+</ul>
+<p>Pełny regulamin dostępny na <strong>zlombol.pl</strong></p>`,
+    tags: ['#regulamin', '#zmiany', '#charytatywność'],
+    link: 'https://zlombol.pl/faq-uczestnika/', stars: 4, isNew: false
+  },
+  {
+    id: 8, pinned: false, cat: 'tech', catLabel: 'TECHNIKALIA', catClass: 'cat-tech',
+    icon: '💡', source: 'FORUM – PORADY PRAKTYCZNE', date: '15 lut 2026',
+    title: 'Opłaty drogowe na trasie do Maroka – kompletny przewodnik',
+    body: 'Zestawienie opłat drogowych dla trasy T1 (Almeria→Nador): e-winieta Czechy 52 PLN, Francja péage ~258 PLN, Hiszpania ~172 PLN, Maroko ~21 PLN.',
+    full: `<p><strong>Kompletny przewodnik po opłatach drogowych – Trasa T1 (Almería→Nador)</strong></p>
+<p><strong>🇨🇿 Czechy – e-winieta:</strong></p>
+<ul>
+<li>Obowiązkowa dla aut powyżej 3,5t – Lublin może wymagać winieta ciężarową</li>
+<li>Cena: 52 PLN (10 dni) | Zakup: edalnice.cz lub aplikacja</li>
+</ul>
+<p><strong>🇩🇪 Niemcy – BEZPŁATNE:</strong></p>
+<ul>
+<li>Autostrady bezpłatne dla aut do 3,5t – Lublin może podlegać opłacie Maut!</li>
+<li>Sprawdź masę pojazdu w dowodzie rejestracyjnym</li>
+</ul>
+<p><strong>🇫🇷 Francja – péage (bramki):</strong></p>
+<ul>
+<li>Koszt trasy Lyon→Walencja→Almería: ~258 PLN</li>
+<li>Płatność kartą lub gotówką | Aplikacja: Via-T lub Sanef</li>
+</ul>
+<p><strong>🇪🇸 Hiszpania – peaje:</strong></p>
+<ul>
+<li>Koszt trasy przez Hiszpanię: ~172 PLN</li>
+<li>Płatność kartą lub gotówką</li>
+</ul>
+<p><strong>🇲🇦 Maroko – autostrady:</strong></p>
+<ul>
+<li>Koszt: ~21 PLN (trasa Nador→Ras el Ma)</li>
+<li>Płatność gotówką w dirhamach (MAD)</li>
+<li>1 EUR ≈ 10,8 MAD | 1 PLN ≈ 2,5 MAD</li>
+</ul>`,
+    tags: ['#opłaty', '#winieta', '#péage', '#maut'],
+    link: 'https://zlombol.pl/forum/', stars: 5, isNew: false
+  },
+  {
+    id: 9, pinned: false, cat: 'forum', catLabel: 'FORUM', catClass: 'cat-forum',
+    icon: '🏕️', source: 'FORUM ZLOMBOL.PL', date: '28 lut 2026',
+    title: 'Noclegi w kamperze – gdzie spać na trasie?',
+    body: 'Dyskusja o noclegach w samochodzie przeróbkach na kamper. Uczestnicy dzielą się sprawdzonymi miejscami: Rastplatz w Niemczech, aires de repos we Francji.',
+    full: `<p><strong>Noclegi w samochodzie-kamperze na trasie Złombol 2026</strong></p>
+<p><strong>🇩🇪 Niemcy – Rastplatz (NAJLEPSZE):</strong></p>
+<ul>
+<li>Bezpłatne parkingi przy autostradach – nocleg 1 noc legalny</li>
+<li>Toalety, często prysznice (płatne), sklep</li>
+<li>Aplikacja: Park4Night, Campercontact</li>
+</ul>
+<p><strong>🇨🇿 Czechy – parkingi przy drogach:</strong></p>
+<ul>
+<li>Bezpłatne parkingi przy drogach krajowych</li>
+<li>Nocleg w pojeździe – legalny</li>
+</ul>
+<p><strong>🇫🇷 Francja – aires de repos:</strong></p>
+<ul>
+<li>Bezpłatne miejsca odpoczynku przy autostradach i drogach krajowych</li>
+<li>Nocowanie 1 noc – legalne</li>
+<li><strong>UWAGA:</strong> Kradzieże na parkingach w okolicach Marsylii i Montpellier! Parkuj w oświetlonych miejscach, nie zostawiaj wartościowych rzeczy widocznych</li>
+<li>Uwaga na gaz usypiający – zamykaj szczelnie pojazd!</li>
+</ul>
+<p><strong>🇪🇸 Hiszpania – áreas de descanso:</strong></p>
+<ul>
+<li>Legalne do noclegu</li>
+<li><strong>ZAKAZ</strong> rozkładania mebli/markiz poza pojazdem – mandat Guardia Civil</li>
+<li>W miastach – szukaj stref dla kamperów (aplikacja Park4Night)</li>
+</ul>
+<p><strong>🇲🇦 Maroko:</strong></p>
+<ul>
+<li>Nocowanie przy drodze dozwolone</li>
+<li>Często nieformalny parkingowy – 5-10 MAD napiwku</li>
+<li>Unikaj nocowania w odosobnionych miejscach – bezpieczeństwo</li>
+</ul>`,
+    tags: ['#nocleg', '#kamper', '#niemcy', '#francja', '#bezpieczeństwo'],
+    link: 'https://zlombol.pl/forum/', stars: 5, isNew: false
+  },
+  {
+    id: 10, pinned: false, cat: 'press', catLabel: 'PRASA', catClass: 'cat-press',
+    icon: '📰', source: 'ZYWIECINFO.PL', date: '19 kwi 2026',
+    title: 'Rdza, Pasja i Wielkie Serce: Rusza Złombol 2026! Kierunek Maroko!',
+    body: 'Artykuł prasowy: "Dwie dekady na trasie, miliony kilometrów na licznikach i ponad 20 milionów złotych przekazanych tym, którzy najbardziej potrzebują pomocy."',
+    full: `<p><strong>Artykuł z portalu ŻywiecInfo.pl – 19 kwietnia 2026</strong></p>
+<p>"Dwie dekady na trasie, miliony kilometrów na licznikach i ponad 20 milionów złotych przekazanych tym, którzy najbardziej potrzebują pomocy. Złombol to nie tylko rajd – to ruch, który zmienia życie."</p>
+<p>Artykuł opisuje historię 20-letniego rajdu, który zaczynał jako spontaniczne spotkanie pasjonatów starych aut, a stał się jedną z największych akcji charytatywnych w Polsce.</p>
+<p>W tym roku po raz pierwszy w historii rajdu, uczestnicy przekroczą granicę Afryki. Setki załóg z całej Polski wyruszy 27 czerwca z Chorzowa w kierunku Maroka.</p>`,
+    tags: ['#prasa', '#historia', '#20 lat', '#charytatywność'],
+    link: 'https://zywiecinfo.pl', stars: 4, isNew: true
+  },
+  {
+    id: 11, pinned: false, cat: 'social', catLabel: 'SOCIAL', catClass: 'cat-social',
+    icon: '📘', source: 'FACEBOOK – ZŁOMBOL', date: '12 kwi 2026',
+    title: '19. edycja przeszła do historii – czas na 20.!',
+    body: 'Oficjalny post na Facebooku: "19. edycja Złombolu przeszła już do historii i będzie wspominana przez długi czas!" Organizatorzy zapowiadają jubileuszowe niespodzianki.',
+    full: `<p><strong>Oficjalny post na Facebooku ZŁOMBOL – 12 kwietnia 2026</strong></p>
+<p>"19. edycja Złombolu przeszła już do historii i będzie wspominana przez długi czas! Dziękujemy wszystkim uczestnikom, wolontariuszom i sponsorom. A teraz... czas na 20.!"</p>
+<p>Organizatorzy zapowiadają specjalne jubileuszowe niespodzianki na 20. edycję, w tym:</p>
+<ul>
+<li>Specjalne oznaczenia i gadżety jubileuszowe</li>
+<li>Większa impreza finałowa w Ras el Ma</li>
+<li>Dokumentacja filmowa całego rajdu</li>
+<li>Specjalne nagrody dla najdłużej uczestniczących załóg</li>
+</ul>`,
+    tags: ['#facebook', '#oficjalne', '#jubileusz', '#20lat'],
+    link: 'https://www.facebook.com/zlombol', stars: 4, isNew: false
+  },
+  {
+    id: 12, pinned: false, cat: 'press', catLabel: 'PRASA', catClass: 'cat-press',
+    icon: '📰', source: 'GAZETAWROCLAWSKA.PL', date: '22 mar 2026',
+    title: 'Fiat 125p i Polonez jadą z Tajlandii do Oławy – potem Złombol!',
+    body: 'Niesamowita historia: ekipa wyruszyła 28.02.2026 z Tajlandii starymi Fiatami 125p i Polonezem. Po powrocie do Polski auta pojadą na Złombol 2026!',
+    full: `<p><strong>Artykuł z Gazety Wrocławskiej – 22 marca 2026</strong></p>
+<p>Niesamowita historia uczestników Złombolu 2026: ekipa z Oławy wyruszyła 28 lutego 2026 roku z Tajlandii starymi Fiatami 125p i Polonezem, by przejechać przez całą Azję i Europę z powrotem do Polski.</p>
+<p>Po powrocie do Oławy, te same auta mają wziąć udział w Złombolu 2026 i dotrzeć do Maroka. Łączny dystans wyprawy przekroczy 20 000 km!</p>
+<p>"To małe auto pojawiło się w naszym życiu z powodu marzenia. I to marzenie nas napędza" – mówi jeden z uczestników.</p>`,
+    tags: ['#fiat 125p', '#polonez', '#tajlandia', '#historia'],
+    link: 'https://gazetawroclawska.pl', stars: 5, isNew: false
+  },
+  {
+    id: 13, pinned: false, cat: 'social', catLabel: 'SOCIAL', catClass: 'cat-social',
+    icon: '📘', source: 'FACEBOOK – NAUAZACH', date: '23 mar 2026',
+    title: 'Operacja "Pustynny Bulbulator" – ekipa UAZ jedzie do Maroka',
+    body: 'Ekipa NaUazach ogłasza udział w Złombolu 2026. Post: "Klamka zapadła. Oficjalne ogłoszenie mety 20. jubileuszowej edycji Złombola."',
+    full: `<p><strong>Post na Facebooku NaUazach – 23 marca 2026</strong></p>
+<p>"Klamka zapadła. Oficjalne ogłoszenie mety 20. jubileuszowej edycji Złombola to był impuls, który sprawił, że nie mogliśmy się oprzeć."</p>
+<p>Ekipa NaUazach ogłasza start Operacji "Pustynny Bulbulator" – przygotowania UAZ-a do trasy przez Europę i Maroko. Pojazd przechodzi gruntowny remont i przygotowanie do warunków pustynnych.</p>
+<p>Zbiórka charytatywna ekipy jest już aktywna na Siepomaga.pl.</p>`,
+    tags: ['#uaz', '#ekipa', '#zbiórka', '#pustynny_bulbulator'],
+    link: 'https://www.facebook.com', stars: 4, isNew: false
+  },
+  {
+    id: 14, pinned: false, cat: 'tech', catLabel: 'TECHNIKALIA', catClass: 'cat-tech',
+    icon: '🔧', source: 'FORUM – TECHNIKALIA', date: '10 mar 2026',
+    title: 'Dokumenty do Maroka – kompletna lista dla uczestników',
+    body: 'Wątek zbiorczy: jakie dokumenty zabrać do Maroka. Zielona Karta z kodem MA, deklaracja celna D16-Ter, ubezpieczenie, paszport.',
+    full: `<p><strong>Kompletna lista dokumentów do Maroka dla uczestników Złombolu 2026</strong></p>
+<p><strong>📋 Dokumenty OBOWIĄZKOWE:</strong></p>
+<ul>
+<li><strong>Paszport</strong> – ważny min. 6 miesięcy po planowanym powrocie</li>
+<li><strong>Zielona Karta (Karta Ubezpieczeniowa)</strong> – musi zawierać kod <strong>MA</strong> (Maroko)! Sprawdź u ubezpieczyciela przed wyjazdem</li>
+<li><strong>Deklaracja celna D16-Ter</strong> – dla pojazdu wjeżdżającego do Maroka. Wypełniana na granicy lub na promie. Auto musi wyjechać z Maroka tym samym pojazdem!</li>
+<li><strong>Dowód rejestracyjny pojazdu</strong></li>
+<li><strong>Prawo jazdy</strong> – kategoria odpowiednia dla pojazdu</li>
+</ul>
+<p><strong>📋 Dokumenty ZALECANE:</strong></p>
+<ul>
+<li>Upoważnienie notarialne (jeśli nie jesteś właścicielem pojazdu)</li>
+<li>Ubezpieczenie graniczne marokańskie (jeśli Zielona Karta nie obejmuje MA)</li>
+<li>Europejska Karta Ubezpieczenia Zdrowotnego (EKUZ) – dla krajów UE</li>
+<li>Ubezpieczenie turystyczne z assistance</li>
+<li>Kopia dokumentów (w chmurze lub osobno od oryginałów)</li>
+</ul>
+<p><strong>⚠️ UWAGA:</strong> Na promach z Almerii i Algeciras marokańscy celnicy wchodzą na pokład i stemplują D16-Ter dla auta NA STATKU. Bez tego nie wyjedziecie z portu w Maroku!</p>`,
+    tags: ['#dokumenty', '#maroko', '#zielona_karta', '#d16ter'],
+    link: 'https://zlombol.pl/faq-uczestnika/', stars: 5, isNew: false
+  },
+  {
+    id: 15, pinned: false, cat: 'social', catLabel: 'SOCIAL', catClass: 'cat-social',
+    icon: '📸', source: 'INSTAGRAM @ZLOMBOL_OFFICIAL', date: '04 sty 2026',
+    title: 'Reel: "Jedziemy z Chorzowa aż do Ras Kebdana!"',
+    body: 'Nowy reel na Instagramie: "Jedziemy z Chorzowa aż do Ras Kebdana w Maroku – bez wsparcia, na własny koszt. Prawdziwy spirit Złombolu!"',
+    full: `<p><strong>Reel na Instagramie @zlombol_official – 4 stycznia 2026</strong></p>
+<p>"Jedziemy z Chorzowa aż do Ras Kebdana w Maroku – bez wsparcia, na własny koszt, starym autem i z wielkim sercem. To jest prawdziwy spirit Złombolu!"</p>
+<p>Reel zebrał ponad 50 000 wyświetleń i tysiące komentarzy od przyszłych uczestników. Organizatorzy pokazują mapę trasy i zapowiadają jubileuszowe niespodzianki.</p>`,
+    tags: ['#instagram', '#reel', '#maroko', '#spirit'],
+    link: 'https://www.instagram.com/zlombol_official/', stars: 4, isNew: false
+  },
+  {
+    id: 16, pinned: false, cat: 'press', catLabel: 'PRASA', catClass: 'cat-press',
+    icon: '📰', source: 'CARERRO.NET', date: '19 gru 2025',
+    title: 'Złombol 2026 – Morocco Edition – szczegóły na Carerro',
+    body: 'Portal motoryzacyjny Carerro.net publikuje szczegóły 20. edycji: start w Chorzowie, meta w Ras el Ma, ponad 3000 km przygody.',
+    full: `<p><strong>Artykuł z Carerro.net – 19 grudnia 2025</strong></p>
+<p>Portal motoryzacyjny Carerro.net jako jeden z pierwszych opublikował szczegóły 20. jubileuszowej edycji Złombolu.</p>
+<p>Artykuł opisuje historię rajdu, wymagania dla uczestników i trasę. Szczególny nacisk kładziony jest na wyjątkowość tegorocznej edycji – pierwsze przekroczenie Afryki w historii Złombolu.</p>`,
+    tags: ['#carerro', '#szczegóły', '#impreza', '#historia'],
+    link: 'https://carerro.net', stars: 4, isNew: false
+  },
+  {
+    id: 17, pinned: false, cat: 'social', catLabel: 'SOCIAL', catClass: 'cat-social',
+    icon: '📘', source: 'FACEBOOK – ŻYWIEC INFO', date: '19 kwi 2026',
+    title: 'Ekipa z Zarzecza wśród setek załóg Złombola 2026',
+    body: 'Wśród setek załóg gotowych do startu w tegorocznym Złombolu znajduje się ekipa z Zarzecza. "To ludzie, którzy udowadniają, że pasja nie zna granic."',
+    full: `<p><strong>Post na Facebooku Żywiec Info – 19 kwietnia 2026</strong></p>
+<p>Wśród setek załóg gotowych do startu w tegorocznym Złombolu znajduje się ekipa z Zarzecza koło Żywca. Lokalni pasjonaci starych aut przygotowują się do wyprawy do Maroka.</p>
+<p>"To ludzie, którzy udowadniają, że pasja nie zna granic, a stare auto może zajechać dalej niż niejeden nowy samochód" – pisze Żywiec Info.</p>`,
+    tags: ['#ekipa', '#żywiec', '#lokalne', '#pasja'],
+    link: 'https://zywiecinfo.pl', stars: 3, isNew: true
+  },
+  {
+    id: 18, pinned: false, cat: 'press', catLabel: 'PRASA', catClass: 'cat-press',
+    icon: '📰', source: 'POLSKICARAVANING.PL', date: '27 mar 2026',
+    title: 'Rajza Maluchem przez życie – historia pełna pasji i podróży',
+    body: 'Artykuł o uczestnikach Złombola jadących Maluchem. "To małe auto pojawiło się w naszym życiu z powodu marzenia Kuby, który chciał pojechać na Złombol."',
+    full: `<p><strong>Artykuł z PolskiCaravaning.pl – 27 marca 2026</strong></p>
+<p>"To małe auto pojawiło się w naszym życiu z powodu marzenia Kuby, który chciał pojechać na Złombol. I tak się zaczęło..."</p>
+<p>Historia rodziny, która kupuje Malucha (Fiat 126p) specjalnie na Złombol 2026. Artykuł opisuje przygotowania auta, przeróbkę na mini-kamper i plany trasy do Maroka.</p>
+<p>Autor podkreśla, że Złombol to nie tylko rajd – to filozofia życia i dowód, że marzenia można spełniać niezależnie od budżetu.</p>`,
+    tags: ['#maluch', '#fiat 126p', '#przygotowania', '#kamper'],
+    link: 'https://polskicaravaning.pl', stars: 4, isNew: false
+  }
+];
+
+// ============================================================
+// RSS FEEDS – pobierane przy każdym otwarciu strony
+// ============================================================
+const RSS_SOURCES = [
+  {
+    name: 'Google News – Złombol 2026',
+    url: 'https://api.rss2json.com/v1/api.json?rss_url=' + encodeURIComponent('https://news.google.com/rss/search?q=z%C5%82ombol+2026&hl=pl&gl=PL&ceid=PL:pl'),
+    cat: 'rss', catLabel: 'RSS LIVE', catClass: 'cat-rss', icon: '📡'
+  },
+  {
+    name: 'Google News – Złombol Maroko',
+    url: 'https://api.rss2json.com/v1/api.json?rss_url=' + encodeURIComponent('https://news.google.com/rss/search?q=z%C5%82ombol+maroko&hl=pl&gl=PL&ceid=PL:pl'),
+    cat: 'rss', catLabel: 'RSS LIVE', catClass: 'cat-rss', icon: '🇲🇦'
+  },
+  {
+    name: 'Google News – Złombol rajd',
+    url: 'https://api.rss2json.com/v1/api.json?rss_url=' + encodeURIComponent('https://news.google.com/rss/search?q=z%C5%82ombol+rajd+2026&hl=pl&gl=PL&ceid=PL:pl'),
+    cat: 'rss', catLabel: 'RSS LIVE', catClass: 'cat-rss', icon: '🏁'
+  }
+];
+
+// ============================================================
+// STAN APLIKACJI
+// ============================================================
+let allNews = [...BASE_NEWS];
+let currentFilter = 'all';
+let searchQuery = '';
+let rssLoaded = false;
+
+// ============================================================
+// INICJALIZACJA
+// ============================================================
+document.addEventListener('DOMContentLoaded', () => {
+  updateCountdown();
+  setInterval(updateCountdown, 1000);
+  updateDaysBadge();
+  renderNews();
+  fetchAllRSS();
+  setInterval(fetchAllRSS, 30 * 60 * 1000); // co 30 minut
+
+  document.getElementById('search-input').addEventListener('input', e => {
+    searchQuery = e.target.value.toLowerCase();
+    renderNews();
+  });
+});
+
+// ============================================================
+// COUNTDOWN
+// ============================================================
+function updateCountdown() {
+  const target = new Date('2026-06-27T10:00:00');
+  const now = new Date();
+  const diff = target - now;
+  if (diff <= 0) {
+    document.getElementById('cd-days').textContent = '0';
+    document.getElementById('cd-hours').textContent = '0';
+    document.getElementById('cd-mins').textContent = '0';
+    document.getElementById('cd-secs').textContent = '0';
+    return;
+  }
+  const days = Math.floor(diff / 86400000);
+  const hours = Math.floor((diff % 86400000) / 3600000);
+  const mins = Math.floor((diff % 3600000) / 60000);
+  const secs = Math.floor((diff % 60000) / 1000);
+  document.getElementById('cd-days').textContent = days;
+  document.getElementById('cd-hours').textContent = String(hours).padStart(2,'0');
+  document.getElementById('cd-mins').textContent = String(mins).padStart(2,'0');
+  document.getElementById('cd-secs').textContent = String(secs).padStart(2,'0');
+
+  // Progress bar
+  const start = new Date('2026-01-01');
+  const total = target - start;
+  const elapsed = now - start;
+  const pct = Math.min(100, Math.max(0, Math.round(elapsed / total * 100)));
+  const el = document.getElementById('progress-fill');
+  const pt = document.getElementById('progress-pct');
+  if (el) el.style.width = pct + '%';
+  if (pt) pt.textContent = pct + '%';
+}
+
+function updateDaysBadge() {
+  const target = new Date('2026-06-27T10:00:00');
+  const now = new Date();
+  const days = Math.max(0, Math.floor((target - now) / 86400000));
+  const el = document.getElementById('days-badge');
+  if (el) el.textContent = '⏰ Za ' + days + ' dni';
+}
+
+// ============================================================
+// RSS FETCHING
+// ============================================================
+async function fetchAllRSS() {
+  const statusEl = document.getElementById('rss-status');
+  const statusText = document.getElementById('rss-status-text');
+  statusEl.style.display = 'flex';
+  statusText.innerHTML = '<span class="rss-loading">⏳</span> Pobieranie aktualnych wiadomości z internetu...';
+
+  let loaded = 0;
+  let errors = 0;
+  const newItems = [];
+
+  for (const src of RSS_SOURCES) {
+    try {
+      const resp = await fetch(src.url, { signal: AbortSignal.timeout(8000) });
+      const data = await resp.json();
+      if (data.status === 'ok' && data.items && data.items.length > 0) {
+        data.items.slice(0, 5).forEach((item, idx) => {
+          const existing = allNews.find(n => n.title === item.title);
+          if (!existing) {
+            newItems.push({
+              id: 1000 + newItems.length,
+              pinned: false,
+              cat: src.cat,
+              catLabel: src.catLabel,
+              catClass: src.catClass,
+              icon: src.icon,
+              source: src.name.toUpperCase(),
+              date: item.pubDate ? new Date(item.pubDate).toLocaleDateString('pl-PL', {day:'numeric',month:'short',year:'numeric'}) : 'Dziś',
+              title: item.title,
+              body: item.description ? item.description.replace(/<[^>]*>/g, '').substring(0, 150) + '...' : 'Kliknij aby przeczytać więcej.',
+              full: `<p>${(item.description || '').replace(/<[^>]*>/g, '')}</p>`,
+              tags: ['#złombol', '#2026', '#live'],
+              link: item.link || '#',
+              stars: 3,
+              isNew: true
+            });
+          }
+        });
+        loaded++;
+      }
+    } catch (e) {
+      errors++;
+    }
+  }
+
+  // Dodaj nowe artykuły na początku
+  if (newItems.length > 0) {
+    allNews = [...newItems, ...allNews];
+    renderNews();
+  }
+
+  // Aktualizuj status
+  const now = new Date().toLocaleTimeString('pl-PL');
+  document.getElementById('last-update').textContent = 'Ostatnia aktualizacja: ' + now;
+  document.getElementById('news-count-badge').textContent = '📰 ' + allNews.length + ' wiadomości';
+
+  if (errors === RSS_SOURCES.length) {
+    statusText.innerHTML = '<span class="rss-err">⚠️</span> Brak połączenia z RSS – wyświetlam zapisane wiadomości. Sprawdź połączenie internetowe.';
+  } else if (newItems.length > 0) {
+    statusText.innerHTML = '<span class="rss-ok">✅</span> Pobrano ' + newItems.length + ' nowych wiadomości z internetu (' + loaded + '/' + RSS_SOURCES.length + ' źródeł aktywnych) • ' + now;
+    setTimeout(() => { statusEl.style.display = 'none'; }, 5000);
+  } else {
+    statusText.innerHTML = '<span class="rss-ok">✅</span> Brak nowych wiadomości – wszystko aktualne (' + loaded + '/' + RSS_SOURCES.length + ' źródeł) • ' + now;
+    setTimeout(() => { statusEl.style.display = 'none'; }, 4000);
+  }
+}
+
+// ============================================================
+// RENDER NEWS
+// ============================================================
+function renderNews() {
+  const grid = document.getElementById('news-grid');
+  let filtered = allNews.filter(n => {
+    const matchFilter = currentFilter === 'all' || n.cat === currentFilter;
+    const matchSearch = !searchQuery ||
+      n.title.toLowerCase().includes(searchQuery) ||
+      n.body.toLowerCase().includes(searchQuery) ||
+      n.source.toLowerCase().includes(searchQuery) ||
+      (n.tags && n.tags.join(' ').toLowerCase().includes(searchQuery));
+    return matchFilter && matchSearch;
+  });
+
+  // Pinned first
+  filtered.sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0));
+
+  if (filtered.length === 0) {
+    grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1"><div class="icon">🔍</div><p>Brak wiadomości pasujących do filtrów.</p></div>';
+    return;
+  }
+
+  grid.innerHTML = filtered.map(n => `
+    <div class="news-card ${n.pinned ? 'pinned' : ''}" onclick="openModal(${n.id})">
+      <div class="card-meta">
+        <span style="font-size:1rem">${n.icon}</span>
+        <span class="card-source">${n.source}</span>
+        <span class="card-date">${n.date}</span>
+        <span class="card-cat ${n.catClass}">${n.catLabel}</span>
+        ${n.isNew ? '<span class="new-badge">NOWE</span>' : ''}
+        ${n.cat === 'rss' ? '<span class="rss-badge">📡 LIVE</span>' : ''}
+      </div>
+      <div class="card-title">${n.title}</div>
+      <div class="card-body">${n.body}</div>
+      <div class="card-tags">${(n.tags||[]).map(t=>`<span class="tag">${t}</span>`).join('')}</div>
+      <div class="card-footer">
+        <span class="card-stars">${'★'.repeat(n.stars)}${'☆'.repeat(5-n.stars)}</span>
+        <a href="${n.link}" target="_blank" class="card-link" onclick="event.stopPropagation()">🔗 Źródło ↗</a>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ============================================================
+// FILTER
+// ============================================================
+function filterNews(cat, btn) {
+  currentFilter = cat;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderNews();
+}
+
+// ============================================================
+// REFRESH
+// ============================================================
+function refreshAll() {
+  const btn = document.getElementById('refresh-btn');
+  btn.classList.add('spinning');
+  fetchAllRSS().finally(() => {
+    setTimeout(() => btn.classList.remove('spinning'), 1000);
+  });
+}
+
+// ============================================================
+// MODAL
+// ============================================================
+function openModal(id) {
+  const n = allNews.find(x => x.id === id);
+  if (!n) return;
+  document.getElementById('modal-title').textContent = n.title;
+  document.getElementById('modal-meta').innerHTML = `
+    <span>${n.icon} ${n.source}</span>
+    <span>📅 ${n.date}</span>
+    <span class="card-cat ${n.catClass}" style="padding:2px 8px;border-radius:10px;font-size:0.72rem">${n.catLabel}</span>
+    <span class="card-stars">${'★'.repeat(n.stars)}${'☆'.repeat(5-n.stars)}</span>
+  `;
+  document.getElementById('modal-body').innerHTML = n.full || n.body;
+  const link = document.getElementById('modal-link');
+  link.href = n.link || '#';
+  link.style.display = n.link && n.link !== '#' ? 'inline-block' : 'none';
+  document.getElementById('modal-overlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeModal(e) {
+  if (!e || e.target === document.getElementById('modal-overlay') || e.currentTarget.tagName === 'BUTTON') {
+    document.getElementById('modal-overlay').classList.remove('open');
+    document.body.style.overflow = '';
+  }
+}
+
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal({target: document.getElementById('modal-overlay')}); });
+</script>
+</body>
+</html>
